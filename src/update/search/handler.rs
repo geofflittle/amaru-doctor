@@ -1,12 +1,12 @@
 use crate::{
     app_state::AppState,
     model::window::WindowState,
-    states::{LedgerSearchOption, StoreOption, WidgetSlot},
+    states::{InspectOption, LedgerSearchOption, WidgetSlot},
     store::owned_iter::OwnedUtxoIter,
     ui::to_list_item::UtxoItem,
     update::search::{SearchHandler, SearchState},
 };
-use amaru_consensus::{Nonces, consensus::store::ChainStore};
+use amaru_consensus::{Nonces, consensus::store::ReadOnlyChainStore};
 use amaru_kernel::{Address, HasAddress, Hash, Header, RawBlock};
 use tracing::trace;
 
@@ -25,7 +25,7 @@ impl SearchHandler for LedgerUtxosByAddr {
     }
 
     fn is_active(&self, s: &AppState) -> bool {
-        *s.store_option.current() == StoreOption::Ledger
+        *s.inspect_option.current() == InspectOption::Ledger
             && s.ledger_search_options.selected() == Some(&LedgerSearchOption::UtxosByAddress)
     }
 
@@ -63,7 +63,7 @@ impl SearchHandler for ChainSearch {
     }
 
     fn is_active(&self, s: &AppState) -> bool {
-        *s.store_option.current() == StoreOption::Chain
+        *s.inspect_option.current() == InspectOption::Chain
     }
 
     fn state<'a>(&self, s: &'a AppState) -> &'a SearchState<Self::Query, Self::Result> {
@@ -82,7 +82,7 @@ impl SearchHandler for ChainSearch {
                 return None;
             }
         };
-        let block = match ChainStore::<Header>::load_block(&*s.chain_db, query) {
+        let block = match ReadOnlyChainStore::<Header>::load_block(&*s.chain_db, query) {
             Ok(b) => b,
             Err(e) => {
                 trace!(
@@ -94,7 +94,7 @@ impl SearchHandler for ChainSearch {
                 return None;
             }
         };
-        let nonces = match ChainStore::<Header>::get_nonces(&*s.chain_db, query) {
+        let nonces = match ReadOnlyChainStore::<Header>::get_nonces(&*s.chain_db, query) {
             Some(n) => n,
             None => {
                 trace!("{} Found no nonces for query {}", self.debug_name(), query);
